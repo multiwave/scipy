@@ -6,8 +6,8 @@ from numpy import cos, sin, pi
 from numpy.testing import run_module_suite, assert_equal, \
     assert_almost_equal, assert_allclose, assert_
 
-from scipy.integrate import (quadrature, romberg, romb, newton_cotes,
-                             cumtrapz, quad, simps, fixed_quad)
+from scipy.integrate import quadrature, romberg, romb, newton_cotes, \
+    cumtrapz, quad, nquad, simps, fixed_quad, n_fixed_quad
 from scipy.integrate.quadrature import AccuracyWarning
 
 
@@ -27,6 +27,55 @@ class TestFixedQuad(object):
         expected = 1/(p + 1)
         got, _ = fixed_quad(func, 0, 1, n=n)
         assert_allclose(got, expected, rtol=1e-12)
+
+
+class TestNFixedQuad(object):
+    """Testing basic functionality of integration."""
+
+    def setUp(self):
+        """Set up the integration functions."""
+
+        def multi_fun0(x0):
+            """Test function of one variable."""
+            return 3 * x0
+
+        def multi_fun1(x0, x1):
+            """Test function of two variables."""
+            return x0 + x1
+
+        def multi_fun2(x0, x1, x2):
+            """Test function of three variables."""
+            return (x1 + 0.3)**3 - 0.1 + 2 * (-x2**2 + 0.4) - \
+                0.3 * np.exp(x0 - 0.7)
+
+        def multi_fun3(x0, x1, x2, x3):
+            """Test function of four variables."""
+            return (x0 + 0.3)**3 - 0.1 - 2 * (-x1**2 + 0.4) + \
+                0.3 * np.exp(x2 - 0.7) + 0.1 * (x3 - 1.1)
+
+        def multi_fun4(x0, x1, x2, x3, x4):
+            """Test function of five variables."""
+            return x2**2 - 0.1 - 0.08 * (x3**3 + 0.2) + \
+                - 0.3 * np.exp(x0) - 0.3 * (x1 - 2.1) + 0.6 * (x4**2 - 3)
+
+        self.funs = [
+            multi_fun0, multi_fun1, multi_fun2, multi_fun3, multi_fun4
+        ]
+
+        self.x_lims = [
+            np.array([[-1, 3]]),
+            np.array([[-2, 1],   [0, 2]]),
+            np.array([[-2.1, 3], [-1.1, 1], [0, 4]]),
+            np.array([[-2.1, 3], [-1.1, 1], [0, 4],   [1, 3]]),
+            np.array([[-2.1, 3], [-1.1, 1], [0, 1.1], [1, 3], [-3, -2]])
+        ]
+
+    def test_integration(self):
+        """Test of the integration of a function."""
+        for func, x_lim in zip(self.funs, self.x_lims):
+            res_hm = n_fixed_quad(func, x_lim)
+            res_sp, _ = nquad(func, x_lim)
+            assert_allclose(res_hm, res_sp, rtol=1e-5)
 
 
 class TestQuadrature(object):
