@@ -14,18 +14,16 @@ from scipy.integrate.quadrature import AccuracyWarning
 class TestFixedQuad(object):
     def test_scalar(self):
         n = 4
-        func = lambda x: x**(2*n - 1)
         expected = 1/(2*n)
-        got, _ = fixed_quad(func, 0, 1, n=n)
+        got, _ = fixed_quad(lambda x: x**(2*n - 1), 0, 1, n=n)
         # quadrature exact for this input
         assert_allclose(got, expected, rtol=1e-12)
 
     def test_vector(self):
         n = 4
         p = np.arange(1, 2*n)
-        func = lambda x: x**p[:,None]
         expected = 1/(p + 1)
-        got, _ = fixed_quad(func, 0, 1, n=n)
+        got, _ = fixed_quad(lambda x: x**p[:, None], 0, 1, n=n)
         assert_allclose(got, expected, rtol=1e-12)
 
 
