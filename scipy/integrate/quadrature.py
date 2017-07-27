@@ -11,8 +11,10 @@ from scipy.special import roots_legendre
 from scipy.special import gammaln
 from scipy._lib.six import xrange
 
-__all__ = ['fixed_quad', 'quadrature', 'romberg', 'trapz', 'simps', 'romb',
-           'cumtrapz', 'newton_cotes']
+from functools import reduce
+
+__all__ = ['fixed_quad', 'n_fixed_quad', 'quadrature', 'romberg', 'trapz',
+           'simps', 'romb', 'cumtrapz', 'newton_cotes']
 
 
 class AccuracyWarning(Warning):
@@ -83,6 +85,77 @@ def fixed_quad(func, a, b, args=(), n=5):
                          "finite limits.")
     y = (b-a)*(x+1)/2.0 + a
     return (b-a)/2.0 * np.sum(w*func(y, *args), axis=-1), None
+
+
+def n_fixed_quad(func, limits, args=(), orders=None):
+    """
+    n-dimensional Gaussian quadrature.
+
+    Compute a definite integral using fixed-order Gaussian quadrature for
+    the functions of `N` dimensions with a choice of the orders.
+
+    Parameters
+    ----------
+    func : callable
+        Python function or method to integrate. It must accept vector inputs.
+    limits : float
+        Numpy float iterable of size `N * 2` defining the limits of
+        the integration.
+    args : tuple, optional
+        Extra arguments to pass to function `func`, if any.
+    orders : int, optional
+        Orders of quadrature integration for each parameter.
+        Default is 5 for each direction.
+
+    Returns
+    -------
+    val : float, complex
+        Gaussian quadrature approximation to the integral
+
+
+    See Also
+    --------
+    quad : adaptive quadrature using QUADPACK
+    dblquad : double integrals
+    tplquad : triple integrals
+    romberg : adaptive Romberg quadrature
+    quadrature : adaptive Gaussian quadrature
+    romb : integrators for sampled data
+    simps : integrators for sampled data
+    cumtrapz : cumulative integration for sampled data
+    ode : ODE integrator
+    odeint : ODE integrator
+
+    """
+    xs = []
+    ws = []
+    jacobian = []
+
+    if orders is None:
+        orders = [5 for i, _ in enumerate(limits)]
+
+    for order, bounds in zip(orders, limits):
+        if np.isinf(bounds[0]) or np.isinf(bounds[1]):
+            raise ValueError("Gaussian quadrature is only available for "
+                             "finite limits.")
+
+        xi, wi = _cached_roots_legendre(order)
+        yi = (bounds[1] - bounds[0]) * (np.real(xi) + 1) / 2 + bounds[0]
+        xs.append(yi)
+        ws.append(wi)
+        jacobian.append((bounds[1] - bounds[0]) / 2)
+
+    x_grid = np.meshgrid(*xs)
+    function_eval = func(*(x_grid + list(args))) * \
+        np.prod(np.asarray(jacobian))
+    w_grid = np.meshgrid(*ws)
+
+    if len(function_eval.shape) == 1:
+        return function_eval @ ws[0]
+
+    else:
+        w_eval = reduce(lambda x, y: x * y, w_grid)
+        return np.sum(function_eval * w_eval)
 
 
 def vectorize1(func, args=(), vec_func=False):
